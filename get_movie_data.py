@@ -1,18 +1,32 @@
-# -*- coding: utf-8 -*-
-
-"""
-    @Author 坦克手贝塔
-    @Date 2022/3/12 18:16
-"""
-
 import requests
 import time
 from bs4 import BeautifulSoup
+import pymysql
 
 
 class DouCrawler:
     def __init__(self) -> None:
         self.url = "https://movie.douban.com/top250"
+
+    @staticmethod
+    def create_table():
+        sql_create_table = """
+        CREATE TABLE Movie (
+        id INT auto_increment PRIMARY KEY ,
+        name CHAR(100) ,
+        star FLOAT ,
+        introduction CHAR(200)
+        );
+        """
+        conn = pymysql.connect(host='localhost', user='root', password='123456', database='MovieDB')
+        cursor = conn.cursor()
+        try:
+            cursor.execute(sql_create_table)
+            conn.commit()
+        except:
+            conn.rollback()
+        finally:
+            conn.close()
 
     def get_data(self):
         headers = {
@@ -33,17 +47,31 @@ class DouCrawler:
                 bs = BeautifulSoup(response.text, "lxml")
                 general_info += bs.find_all("div", {"class": "item"})
                 index += 25
-                time.sleep(10)
+                time.sleep(5)
             else:
                 print("失败："+str(response.status_code))
-                time.sleep(60)
+                time.sleep(10)
                 response = requests.get(self.url, headers=headers, params=parameters)
 
+        DouCrawler.create_table()
+        conn = pymysql.connect(host='localhost', user='root', password='123456', database='MovieDB')
+        cursor = conn.cursor()
+
         for item in general_info:
-            movie_name = item.find_all("span", {"class": "title"})[0].string
-            movie_star = item.find_all("span", {"class": "rating_num"})[0].string
-            movie_brief_introduction = item.find_all("span")[-1].string
-            print("电影名：", movie_name, "得分：", movie_star, "简介：", movie_brief_introduction)
+            movie_name_option = item.find_all("span", {"class": "title"})
+            movie_name = movie_name_option[0].string if movie_name_option else ""
+            movie_star_option = item.find_all("span", {"class": "rating_num"})
+            movie_star = movie_star_option[0].string if movie_star_option else ""
+            movie_introduction_option = item.find_all("span", {"class": "inq"})
+            movie_introduction = movie_introduction_option[0].string if movie_introduction_option else ""
+            sql_insert_data = "INSERT INTO Movie(name, star, introduction) VALUES (%s, %s, %s);"
+            try:
+                cursor.execute(sql_insert_data, [movie_name, float(movie_star), movie_introduction])
+                conn.commit()
+            except Exception as e:
+                print(e)
+                conn.rollback()
+        conn.close()
 
 
 if __name__ == "__main__":
