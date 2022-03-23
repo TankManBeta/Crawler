@@ -23,7 +23,7 @@ class DouCrawler:
         try:
             cursor.execute(sql_create_table)
             conn.commit()
-        except:
+        except Exception as e:
             conn.rollback()
         finally:
             conn.close()
