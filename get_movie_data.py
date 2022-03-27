@@ -72,8 +72,3 @@ class DouCrawler:
                 print(e)
                 conn.rollback()
         conn.close()
-
-
-if __name__ == "__main__":
-    my_crawler = DouCrawler()
-    my_crawler.get_data()
